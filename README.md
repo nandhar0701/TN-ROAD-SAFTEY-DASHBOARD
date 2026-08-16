@@ -86,19 +86,6 @@ from Nagapattinam in late 2020, so 2021 reporting was inconsistent. The
 analysis script leaves this as a genuine `NaN` rather than guessing a
 value.
 
-## 🚀 Setup
-
-1. Clone or download this repo
-2. Open `index.html` directly in any browser — no server needed
-
-### Enabling GitHub Pages (to get a live link)
-
-1. Go to **Settings → Pages** in your repo
-2. Under "Build and deployment," set **Source** to `Deploy from a branch`
-3. Pick the `main` branch and `/ (root)` folder → **Save**
-4. Live at `https://YOUR-USERNAME.github.io/REPO-NAME/` within a minute
-   or two
-
 ## 📄 License / Attribution
 
 Personal/academic project. All statistics are compiled from public
