@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tamil Nadu Road Safety Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg-base:#0E1013;
+    --bg-panel:#171A1F;
+    --bg-raised:#1E222A;
+    --line:#2A2F38;
+    --text-primary:#EDEDE8;
+    --text-muted:#8A909C;
+    --green:#2ECC71;
+    --amber:#F5A623;
+    --red:#E8543E;
+    --font-display:'Space Grotesk','Segoe UI',sans-serif;
+    --font-body:'Inter','Segoe UI',sans-serif;
+    --font-mono:'JetBrains Mono','Consolas',monospace;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(232,84,62,0.06), transparent 40%),
+      radial-gradient(circle at 85% 10%, rgba(46,204,113,0.05), transparent 45%),
+      var(--bg-base);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    padding:28px 32px 60px;
+  }
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    flex-wrap:wrap; gap:16px;
+    border-bottom:1px solid var(--line); padding-bottom:20px; margin-bottom:22px;
+  }
+  .eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--red); margin-bottom:8px;}
+  h1{font-family:var(--font-display); font-weight:700; font-size:32px; margin:0; letter-spacing:-0.01em;}
+  .subtitle{color:var(--text-muted); font-size:13.5px; margin-top:6px; max-width:560px;}
+  .source{font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted); text-align:right; line-height:1.6;}
+  .source a{color:var(--amber); text-decoration:none;}
+
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;}
+  .kpi{background:var(--bg-panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px;}
+  .kpi .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted);}
+  .kpi .num{font-family:var(--font-mono); font-size:23px; font-weight:600; margin-top:6px;}
+  .kpi .sub{font-size:11px; color:var(--text-muted); margin-top:3px;}
+  @media (max-width:760px){.kpis{grid-template-columns:repeat(2,1fr);}}
+
+  .layout{display:grid; grid-template-columns:1.3fr 1fr; gap:18px;}
+  @media (max-width:940px){.layout{grid-template-columns:1fr;}}
+
+  .panel{background:var(--bg-panel); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:18px;}
+  .panel h2{font-family:var(--font-display); font-size:16px; margin:0 0 4px; font-weight:700;}
+  .panel .desc{color:var(--text-muted); font-size:12.5px; margin-bottom:14px;}
+
+  .yeartabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
+  .yeartab{font-family:var(--font-mono); font-size:11.5px; padding:6px 10px; border-radius:6px; border:1px solid var(--line); background:var(--bg-raised); color:var(--text-muted); cursor:pointer;}
+  .yeartab.active{color:var(--bg-base); background:var(--amber); border-color:var(--amber); font-weight:600;}
+
+  .board{max-height:520px; overflow-y:auto; padding-right:4px;}
+  .row{display:grid; grid-template-columns:26px 1fr 70px 90px; align-items:center; gap:10px; padding:7px 4px; border-bottom:1px solid var(--line); font-size:12.5px;}
+  .row:last-child{border-bottom:none;}
+  .rank{font-family:var(--font-mono); color:var(--text-muted); font-size:11px;}
+  .rowname{font-weight:600;}
+  .bar-wrap{grid-column:1 / -1; height:6px; background:var(--bg-raised); border-radius:3px; overflow:hidden; margin-top:2px;}
+  .bar-fill{height:100%; border-radius:3px;}
+  .rownum{font-family:var(--font-mono); text-align:right; font-size:12px;}
+  .rowrate{font-family:var(--font-mono); text-align:right; font-size:11px; color:var(--text-muted);}
+
+  canvas{max-width:100%;}
+  footer{margin-top:22px; padding-top:16px; border-top:1px solid var(--line); color:var(--text-muted); font-size:11.5px; font-family:var(--font-mono);}
+  .legend{display:flex; gap:16px; font-size:11px; color:var(--text-muted); margin-top:10px; font-family:var(--font-mono); flex-wrap:wrap;}
+  .legend span{display:flex; align-items:center; gap:6px;}
+  .legend .sw{width:9px;height:9px;border-radius:50%;}
+  .metric-toggle{display:flex; gap:6px; margin-bottom:12px;}
+  .mtbtn{font-family:var(--font-mono); font-size:11px; padding:5px 10px; border-radius:6px; border:1px solid var(--line); background:var(--bg-raised); color:var(--text-muted); cursor:pointer;}
+  .mtbtn.active{color:var(--bg-base); background:var(--red); border-color:var(--red); font-weight:600;}
+
+  .yeartable-wrap{max-height:480px; overflow-y:auto; border:1px solid var(--line); border-radius:8px;}
+  table.yeartable{width:100%; border-collapse:collapse; font-size:12.5px;}
+  table.yeartable thead th{
+    position:sticky; top:0; background:var(--bg-raised); color:var(--text-muted);
+    font-family:var(--font-mono); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em;
+    text-align:right; padding:9px 12px; border-bottom:1px solid var(--line); z-index:1;
+  }
+  table.yeartable thead th:first-child{text-align:left;}
+  table.yeartable tbody td{
+    padding:7px 12px; text-align:right; border-bottom:1px solid var(--line); font-family:var(--font-mono);
+  }
+  table.yeartable tbody td:first-child{text-align:left; font-family:var(--font-body); font-weight:600;}
+  table.yeartable tbody tr:last-child td{border-bottom:none;}
+  table.yeartable tbody tr:hover{background:rgba(232,84,62,0.06);}
+  table.yeartable tbody tr.provisional td:first-child::after{
+    content:' (P)'; color:var(--text-muted); font-weight:400; font-size:10px;
+  }
+  .fr-cell{display:inline-block; padding:2px 7px; border-radius:10px; font-size:11px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="eyebrow">Road Safety Analytics &mdash; Tamil Nadu</div>
+    <h1>TN Road Accident Dashboard</h1>
+    <div class="subtitle">District-wise accidents &amp; fatalities (2021&ndash;2023) and the statewide 32-year trend (1993&ndash;2025), built on official Tamil Nadu Police data.</div>
+  </div>
+  <div class="source">Source: Tamil Nadu Police / Govt. of Tamil Nadu<br>via <a href="https://data.opencity.in" target="_blank">data.opencity.in</a> (OpenCity civic data portal)<br>38 districts &middot; 33 years of trend data</div>
+</header>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="layout">
+  <div class="col-main">
+    <div class="panel">
+      <h2>District Leaderboard</h2>
+      <div class="desc">All 38 Tamil Nadu districts ranked by total accidents. Toggle the year and the metric.</div>
+      <div class="yeartabs" id="yeartabs"></div>
+      <div class="metric-toggle" id="metrictoggle"></div>
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="panel">
+      <h2>2025 Severity Breakdown</h2>
+      <div class="desc">Share of fatal / grievous / minor / non-injury accidents, latest provisional year.</div>
+      <canvas id="severityPieChart" height="240"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2>Top Districts by Share (2023)</h2>
+      <div class="desc">Top 8 districts vs. the rest of Tamil Nadu, by share of total accidents.</div>
+      <canvas id="districtPieChart" height="240"></canvas>
+    </div>
+  </div>
+
+  <div class="col-side">
+    <div class="panel">
+      <h2>32-Year Statewide Trend</h2>
+      <div class="desc">Total accidents vs. persons killed, 1993&ndash;2025 (2024/25 are provisional).</div>
+      <canvas id="trendChart" height="200"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2>Accident Severity Mix</h2>
+      <div class="desc">Share of fatal / grievous / minor / non-injury accidents over time.</div>
+      <canvas id="severityChart" height="220"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2>District Risk Tiers (2023)</h2>
+      <div class="desc">All 38 districts grouped by fatality rate &mdash; deaths per 100 accidents.</div>
+      <canvas id="riskTierPieChart" height="220"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>All Years &mdash; Accidents &amp; Deaths (1993&ndash;2025)</h2>
+  <div class="desc">Every year in the statewide dataset, in full. (P) marks 2024 &amp; 2025 as provisional figures.</div>
+  <div class="yeartable-wrap">
+    <table class="yeartable">
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th>Total Accidents</th>
+          <th>Persons Killed</th>
+          <th>Persons Injured</th>
+          <th>Fatality Rate</th>
+        </tr>
+      </thead>
+      <tbody id="yearTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<footer>
+  Tech stack: HTML/CSS/JS &middot; Chart.js for visualization &middot; Python (pandas) for data cleaning &amp; the accompanying analysis script &middot; real government data sourced from data.opencity.in, originally published by Tamil Nadu Police.
+</footer>
+
+<script>
+const DISTRICTS = [{"district": "Ariyalur", "accidents_2021": 545.0, "deaths_2021": 174.0, "accidents_2022": 562, "deaths_2022": 184, "accidents_2023": 584, "deaths_2023": 190, "fatality_rate_2023": 32.53, "accident_growth_21_23_pct": 7.2}, {"district": "Chengalpattu", "accidents_2021": 1614.0, "deaths_2021": 472.0, "accidents_2022": 3044, "deaths_2022": 937, "accidents_2023": 3402, "deaths_2023": 936, "fatality_rate_2023": 27.51, "accident_growth_21_23_pct": 110.8}, {"district": "Chennai City", "accidents_2021": 5035.0, "deaths_2021": 999.0, "accidents_2022": 3453, "deaths_2022": 507, "accidents_2023": 3654, "deaths_2023": 504, "fatality_rate_2023": 13.79, "accident_growth_21_23_pct": -27.4}, {"district": "Coimbatore", "accidents_2021": 2792.0, "deaths_2021": 841.0, "accidents_2022": 3544, "deaths_2022": 1057, "accidents_2023": 3657, "deaths_2023": 1044, "fatality_rate_2023": 28.55, "accident_growth_21_23_pct": 31.0}, {"district": "Cuddalore", "accidents_2021": 2927.0, "deaths_2021": 550.0, "accidents_2022": 3426, "deaths_2022": 478, "accidents_2023": 3121, "deaths_2023": 585, "fatality_rate_2023": 18.74, "accident_growth_21_23_pct": 6.6}, {"district": "Dharmapuri", "accidents_2021": 1240.0, "deaths_2021": 317.0, "accidents_2022": 1357, "deaths_2022": 389, "accidents_2023": 1420, "deaths_2023": 343, "fatality_rate_2023": 24.15, "accident_growth_21_23_pct": 14.5}, {"district": "Dindigul", "accidents_2021": 1747.0, "deaths_2021": 539.0, "accidents_2022": 2002, "deaths_2022": 680, "accidents_2023": 2296, "deaths_2023": 755, "fatality_rate_2023": 32.88, "accident_growth_21_23_pct": 31.4}, {"district": "Erode", "accidents_2021": 1852.0, "deaths_2021": 525.0, "accidents_2022": 2155, "deaths_2022": 661, "accidents_2023": 2396, "deaths_2023": 687, "fatality_rate_2023": 28.67, "accident_growth_21_23_pct": 29.4}, {"district": "Kallakurichi", "accidents_2021": 1070.0, "deaths_2021": 275.0, "accidents_2022": 1147, "deaths_2022": 284, "accidents_2023": 1166, "deaths_2023": 327, "fatality_rate_2023": 28.04, "accident_growth_21_23_pct": 9.0}, {"district": "Kancheepuram", "accidents_2021": 910.0, "deaths_2021": 240.0, "accidents_2022": 1011, "deaths_2022": 303, "accidents_2023": 1039, "deaths_2023": 297, "fatality_rate_2023": 28.59, "accident_growth_21_23_pct": 14.2}, {"district": "Kanniyakumari", "accidents_2021": 1225.0, "deaths_2021": 321.0, "accidents_2022": 1381, "deaths_2022": 306, "accidents_2023": 1471, "deaths_2023": 350, "fatality_rate_2023": 23.79, "accident_growth_21_23_pct": 20.1}, {"district": "Karur", "accidents_2021": 1111.0, "deaths_2021": 413.0, "accidents_2022": 1101, "deaths_2022": 382, "accidents_2023": 1132, "deaths_2023": 362, "fatality_rate_2023": 31.98, "accident_growth_21_23_pct": 1.9}, {"district": "Krishnagiri", "accidents_2021": 1734.0, "deaths_2021": 589.0, "accidents_2022": 2029, "deaths_2022": 646, "accidents_2023": 2142, "deaths_2023": 656, "fatality_rate_2023": 30.63, "accident_growth_21_23_pct": 23.5}, {"district": "Madurai", "accidents_2021": 2283.0, "deaths_2021": 711.0, "accidents_2022": 2489, "deaths_2022": 810, "accidents_2023": 2660, "deaths_2023": 890, "fatality_rate_2023": 33.46, "accident_growth_21_23_pct": 16.5}, {"district": "Myiladuthurai", "accidents_2021": null, "deaths_2021": null, "accidents_2022": 660, "deaths_2022": 153, "accidents_2023": 771, "deaths_2023": 146, "fatality_rate_2023": 18.94, "accident_growth_21_23_pct": null}, {"district": "Nagapattinam", "accidents_2021": 1024.0, "deaths_2021": 225.0, "accidents_2022": 592, "deaths_2022": 134, "accidents_2023": 529, "deaths_2023": 134, "fatality_rate_2023": 25.33, "accident_growth_21_23_pct": -48.3}, {"district": "Namakkal", "accidents_2021": 1734.0, "deaths_2021": 422.0, "accidents_2022": 2021, "deaths_2022": 529, "accidents_2023": 2089, "deaths_2023": 584, "fatality_rate_2023": 27.96, "accident_growth_21_23_pct": 20.5}, {"district": "Perambalur", "accidents_2021": 511.0, "deaths_2021": 173.0, "accidents_2022": 550, "deaths_2022": 228, "accidents_2023": 529, "deaths_2023": 188, "fatality_rate_2023": 35.54, "accident_growth_21_23_pct": 3.5}, {"district": "Pudukkottai", "accidents_2021": 1369.0, "deaths_2021": 380.0, "accidents_2022": 1731, "deaths_2022": 497, "accidents_2023": 1681, "deaths_2023": 447, "fatality_rate_2023": 26.59, "accident_growth_21_23_pct": 22.8}, {"district": "Ramanathapuram", "accidents_2021": 1107.0, "deaths_2021": 335.0, "accidents_2022": 1211, "deaths_2022": 374, "accidents_2023": 1310, "deaths_2023": 426, "fatality_rate_2023": 32.52, "accident_growth_21_23_pct": 18.3}, {"district": "Ranipet", "accidents_2021": 833.0, "deaths_2021": 242.0, "accidents_2022": 858, "deaths_2022": 271, "accidents_2023": 911, "deaths_2023": 283, "fatality_rate_2023": 31.06, "accident_growth_21_23_pct": 9.4}, {"district": "Salem", "accidents_2021": 2606.0, "deaths_2021": 721.0, "accidents_2022": 3360, "deaths_2022": 868, "accidents_2023": 3199, "deaths_2023": 797, "fatality_rate_2023": 24.91, "accident_growth_21_23_pct": 22.8}, {"district": "Sivagangai", "accidents_2021": 961.0, "deaths_2021": 337.0, "accidents_2022": 1143, "deaths_2022": 395, "accidents_2023": 1244, "deaths_2023": 392, "fatality_rate_2023": 31.51, "accident_growth_21_23_pct": 29.4}, {"district": "Tenkasi", "accidents_2021": 979.0, "deaths_2021": 237.0, "accidents_2022": 1103, "deaths_2022": 283, "accidents_2023": 1117, "deaths_2023": 252, "fatality_rate_2023": 22.56, "accident_growth_21_23_pct": 14.1}, {"district": "Thanjavur", "accidents_2021": 1849.0, "deaths_2021": 431.0, "accidents_2022": 2224, "deaths_2022": 551, "accidents_2023": 2327, "deaths_2023": 609, "fatality_rate_2023": 26.17, "accident_growth_21_23_pct": 25.9}, {"district": "The Nilgiris", "accidents_2021": 210.0, "deaths_2021": 33.0, "accidents_2022": 236, "deaths_2022": 44, "accidents_2023": 213, "deaths_2023": 75, "fatality_rate_2023": 35.21, "accident_growth_21_23_pct": 1.4}, {"district": "Theni", "accidents_2021": 960.0, "deaths_2021": 239.0, "accidents_2022": 1121, "deaths_2022": 338, "accidents_2023": 1177, "deaths_2023": 327, "fatality_rate_2023": 27.78, "accident_growth_21_23_pct": 22.6}, {"district": "Thiruvallur", "accidents_2021": 1274.0, "deaths_2021": 331.0, "accidents_2022": 2595, "deaths_2022": 727, "accidents_2023": 2624, "deaths_2023": 730, "fatality_rate_2023": 27.82, "accident_growth_21_23_pct": 106.0}, {"district": "Thiruvarur", "accidents_2021": 621.0, "deaths_2021": 168.0, "accidents_2022": 727, "deaths_2022": 216, "accidents_2023": 893, "deaths_2023": 227, "fatality_rate_2023": 25.42, "accident_growth_21_23_pct": 43.8}, {"district": "Thoothukudi", "accidents_2021": 1253.0, "deaths_2021": 394.0, "accidents_2022": 1246, "deaths_2022": 457, "accidents_2023": 1440, "deaths_2023": 486, "fatality_rate_2023": 33.75, "accident_growth_21_23_pct": 14.9}, {"district": "Tiruchirapalli", "accidents_2021": 1953.0, "deaths_2021": 643.0, "accidents_2022": 2222, "deaths_2022": 714, "accidents_2023": 2426, "deaths_2023": 720, "fatality_rate_2023": 29.68, "accident_growth_21_23_pct": 24.2}, {"district": "Tirunelveli", "accidents_2021": 1280.0, "deaths_2021": 359.0, "accidents_2022": 1294, "deaths_2022": 408, "accidents_2023": 1531, "deaths_2023": 415, "fatality_rate_2023": 27.11, "accident_growth_21_23_pct": 19.6}, {"district": "Tirupathur", "accidents_2021": 709.0, "deaths_2021": 226.0, "accidents_2022": 766, "deaths_2022": 217, "accidents_2023": 622, "deaths_2023": 217, "fatality_rate_2023": 34.89, "accident_growth_21_23_pct": -12.3}, {"district": "Tiruppur", "accidents_2021": 2703.0, "deaths_2021": 798.0, "accidents_2022": 3145, "deaths_2022": 899, "accidents_2023": 3294, "deaths_2023": 875, "fatality_rate_2023": 26.56, "accident_growth_21_23_pct": 21.9}, {"district": "Tiruvannamalai", "accidents_2021": 1435.0, "deaths_2021": 522.0, "accidents_2022": 1762, "deaths_2022": 565, "accidents_2023": 1913, "deaths_2023": 697, "fatality_rate_2023": 36.43, "accident_growth_21_23_pct": 33.3}, {"district": "Vellore", "accidents_2021": 819.0, "deaths_2021": 246.0, "accidents_2022": 976, "deaths_2022": 294, "accidents_2023": 992, "deaths_2023": 328, "fatality_rate_2023": 33.06, "accident_growth_21_23_pct": 21.1}, {"district": "Villupuram", "accidents_2021": 2131.0, "deaths_2021": 520.0, "accidents_2022": 2403, "deaths_2022": 583, "accidents_2023": 2591, "deaths_2023": 564, "fatality_rate_2023": 21.77, "accident_growth_21_23_pct": 21.6}, {"district": "Virudhunagar", "accidents_2021": 1276.0, "deaths_2021": 436.0, "accidents_2022": 1458, "deaths_2022": 515, "accidents_2023": 1650, "deaths_2023": 502, "fatality_rate_2023": 30.42, "accident_growth_21_23_pct": 29.3}];
+const TREND = [{"Year": 1993, "Fatal_Accidents": 6528, "Grievous_Accidents": 3562, "Minor_Accidents": 17957, "Non_Injury_Accidents": 6878, "Total_Accidents": 34925, "Persons_Killed": 7349, "Persons_Injured": 5100, "Total_Persons_Involved": 39675, "fatality_rate": 21.04, "fatal_pct_of_accidents": 18.7}, {"Year": 1994, "Fatal_Accidents": 7027, "Grievous_Accidents": 4199, "Minor_Accidents": 18950, "Non_Injury_Accidents": 6861, "Total_Accidents": 37037, "Persons_Killed": 7798, "Persons_Injured": 6091, "Total_Persons_Involved": 42678, "fatality_rate": 21.05, "fatal_pct_of_accidents": 19.0}, {"Year": 1995, "Fatal_Accidents": 7974, "Grievous_Accidents": 4440, "Minor_Accidents": 21661, "Non_Injury_Accidents": 7610, "Total_Accidents": 41685, "Persons_Killed": 8773, "Persons_Injured": 6380, "Total_Persons_Involved": 47075, "fatality_rate": 21.05, "fatal_pct_of_accidents": 19.1}, {"Year": 1996, "Fatal_Accidents": 8079, "Grievous_Accidents": 4474, "Minor_Accidents": 22151, "Non_Injury_Accidents": 7493, "Total_Accidents": 42197, "Persons_Killed": 9028, "Persons_Injured": 7383, "Total_Persons_Involved": 47609, "fatality_rate": 21.39, "fatal_pct_of_accidents": 19.1}, {"Year": 1997, "Fatal_Accidents": 7947, "Grievous_Accidents": 4542, "Minor_Accidents": 23362, "Non_Injury_Accidents": 8352, "Total_Accidents": 44203, "Persons_Killed": 8755, "Persons_Injured": 6567, "Total_Persons_Involved": 49332, "fatality_rate": 19.81, "fatal_pct_of_accidents": 18.0}, {"Year": 1998, "Fatal_Accidents": 8510, "Grievous_Accidents": 6562, "Minor_Accidents": 23862, "Non_Injury_Accidents": 7789, "Total_Accidents": 46723, "Persons_Killed": 9801, "Persons_Injured": 8525, "Total_Persons_Involved": 52296, "fatality_rate": 20.98, "fatal_pct_of_accidents": 18.2}, {"Year": 1999, "Fatal_Accidents": 8734, "Grievous_Accidents": 5276, "Minor_Accidents": 27231, "Non_Injury_Accidents": 6845, "Total_Accidents": 48086, "Persons_Killed": 9653, "Persons_Injured": 7287, "Total_Persons_Involved": 51097, "fatality_rate": 20.07, "fatal_pct_of_accidents": 18.2}, {"Year": 2000, "Fatal_Accidents": 8269, "Grievous_Accidents": 5278, "Minor_Accidents": 29137, "Non_Injury_Accidents": 6239, "Total_Accidents": 48923, "Persons_Killed": 9300, "Persons_Injured": 8496, "Total_Persons_Involved": 62706, "fatality_rate": 19.01, "fatal_pct_of_accidents": 16.9}, {"Year": 2001, "Fatal_Accidents": 8579, "Grievous_Accidents": 5442, "Minor_Accidents": 30963, "Non_Injury_Accidents": 6994, "Total_Accidents": 51978, "Persons_Killed": 9571, "Persons_Injured": 8354, "Total_Persons_Involved": 63853, "fatality_rate": 18.41, "fatal_pct_of_accidents": 16.5}, {"Year": 2002, "Fatal_Accidents": 9012, "Grievous_Accidents": 5830, "Minor_Accidents": 32183, "Non_Injury_Accidents": 6478, "Total_Accidents": 53503, "Persons_Killed": 9939, "Persons_Injured": 8697, "Total_Persons_Involved": 65069, "fatality_rate": 18.58, "fatal_pct_of_accidents": 16.8}, {"Year": 2003, "Fatal_Accidents": 8393, "Grievous_Accidents": 5163, "Minor_Accidents": 31600, "Non_Injury_Accidents": 5869, "Total_Accidents": 51025, "Persons_Killed": 9275, "Persons_Injured": 8557, "Total_Persons_Involved": 64517, "fatality_rate": 18.18, "fatal_pct_of_accidents": 16.4}, {"Year": 2004, "Fatal_Accidents": 8733, "Grievous_Accidents": 4875, "Minor_Accidents": 33222, "Non_Injury_Accidents": 5678, "Total_Accidents": 52508, "Persons_Killed": 9507, "Persons_Injured": 7642, "Total_Persons_Involved": 66790, "fatality_rate": 18.11, "fatal_pct_of_accidents": 16.6}, {"Year": 2005, "Fatal_Accidents": 8844, "Grievous_Accidents": 5214, "Minor_Accidents": 34669, "Non_Injury_Accidents": 5151, "Total_Accidents": 53878, "Persons_Killed": 9760, "Persons_Injured": 7815, "Total_Persons_Involved": 71727, "fatality_rate": 18.12, "fatal_pct_of_accidents": 16.4}, {"Year": 2006, "Fatal_Accidents": 10055, "Grievous_Accidents": 4630, "Minor_Accidents": 36262, "Non_Injury_Accidents": 4198, "Total_Accidents": 55145, "Persons_Killed": 11009, "Persons_Injured": 6833, "Total_Persons_Involved": 75350, "fatality_rate": 19.96, "fatal_pct_of_accidents": 18.2}, {"Year": 2007, "Fatal_Accidents": 11034, "Grievous_Accidents": 4498, "Minor_Accidents": 39494, "Non_Injury_Accidents": 4114, "Total_Accidents": 59140, "Persons_Killed": 12036, "Persons_Injured": 6873, "Total_Persons_Involved": 83135, "fatality_rate": 20.35, "fatal_pct_of_accidents": 18.7}, {"Year": 2008, "Fatal_Accidents": 11813, "Grievous_Accidents": 4426, "Minor_Accidents": 39193, "Non_Injury_Accidents": 4977, "Total_Accidents": 60409, "Persons_Killed": 12784, "Persons_Injured": 6696, "Total_Persons_Involved": 83035, "fatality_rate": 21.16, "fatal_pct_of_accidents": 19.6}, {"Year": 2009, "Fatal_Accidents": 12727, "Grievous_Accidents": 4448, "Minor_Accidents": 39676, "Non_Injury_Accidents": 3943, "Total_Accidents": 60794, "Persons_Killed": 13746, "Persons_Injured": 6721, "Total_Persons_Involved": 84250, "fatality_rate": 22.61, "fatal_pct_of_accidents": 20.9}, {"Year": 2010, "Fatal_Accidents": 14241, "Grievous_Accidents": 4613, "Minor_Accidents": 42320, "Non_Injury_Accidents": 3822, "Total_Accidents": 64996, "Persons_Killed": 15409, "Persons_Injured": 6844, "Total_Persons_Involved": 90854, "fatality_rate": 23.71, "fatal_pct_of_accidents": 21.9}, {"Year": 2011, "Fatal_Accidents": 14359, "Grievous_Accidents": 4619, "Minor_Accidents": 42766, "Non_Injury_Accidents": 4129, "Total_Accidents": 65873, "Persons_Killed": 15422, "Persons_Injured": 6573, "Total_Persons_Involved": 89667, "fatality_rate": 23.41, "fatal_pct_of_accidents": 21.8}, {"Year": 2012, "Fatal_Accidents": 15072, "Grievous_Accidents": 4851, "Minor_Accidents": 44604, "Non_Injury_Accidents": 3230, "Total_Accidents": 67757, "Persons_Killed": 16175, "Persons_Injured": 6972, "Total_Persons_Involved": 94523, "fatality_rate": 23.87, "fatal_pct_of_accidents": 22.2}, {"Year": 2013, "Fatal_Accidents": 14504, "Grievous_Accidents": 4715, "Minor_Accidents": 44158, "Non_Injury_Accidents": 2861, "Total_Accidents": 66238, "Persons_Killed": 15563, "Persons_Injured": 6513, "Total_Persons_Involved": 91244, "fatality_rate": 23.5, "fatal_pct_of_accidents": 21.9}, {"Year": 2014, "Fatal_Accidents": 14165, "Grievous_Accidents": 5375, "Minor_Accidents": 45100, "Non_Injury_Accidents": 2610, "Total_Accidents": 67250, "Persons_Killed": 15190, "Persons_Injured": 7381, "Total_Persons_Involved": 92915, "fatality_rate": 22.59, "fatal_pct_of_accidents": 21.1}, {"Year": 2015, "Fatal_Accidents": 14524, "Grievous_Accidents": 7388, "Minor_Accidents": 44880, "Non_Injury_Accidents": 2267, "Total_Accidents": 67250, "Persons_Killed": 15642, "Persons_Injured": 9400, "Total_Persons_Involved": 95343, "fatality_rate": 23.26, "fatal_pct_of_accidents": 21.6}, {"Year": 2016, "Fatal_Accidents": 16092, "Grievous_Accidents": 6262, "Minor_Accidents": 46908, "Non_Injury_Accidents": 2169, "Total_Accidents": 71431, "Persons_Killed": 17218, "Persons_Injured": 8421, "Total_Persons_Involved": 99381, "fatality_rate": 24.1, "fatal_pct_of_accidents": 22.5}, {"Year": 2017, "Fatal_Accidents": 16899, "Grievous_Accidents": 27927, "Minor_Accidents": 19404, "Non_Injury_Accidents": 2533, "Total_Accidents": 66763, "Persons_Killed": 17918, "Persons_Injured": 35488, "Total_Persons_Involved": 86344, "fatality_rate": 26.84, "fatal_pct_of_accidents": 25.3}, {"Year": 2018, "Fatal_Accidents": 17387, "Grievous_Accidents": 29697, "Minor_Accidents": 18190, "Non_Injury_Accidents": 2005, "Total_Accidents": 67279, "Persons_Killed": 18392, "Persons_Injured": 37664, "Total_Persons_Involved": 88226, "fatality_rate": 27.34, "fatal_pct_of_accidents": 25.8}, {"Year": 2019, "Fatal_Accidents": 17196, "Grievous_Accidents": 27255, "Minor_Accidents": 16509, "Non_Injury_Accidents": 1725, "Total_Accidents": 62685, "Persons_Killed": 18129, "Persons_Injured": 34181, "Total_Persons_Involved": 81261, "fatality_rate": 28.92, "fatal_pct_of_accidents": 27.4}, {"Year": 2020, "Fatal_Accidents": 13868, "Grievous_Accidents": 18653, "Minor_Accidents": 16259, "Non_Injury_Accidents": 1064, "Total_Accidents": 49844, "Persons_Killed": 14527, "Persons_Injured": 22593, "Total_Persons_Involved": 62145, "fatality_rate": 29.14, "fatal_pct_of_accidents": 27.8}, {"Year": 2021, "Fatal_Accidents": 14747, "Grievous_Accidents": 20743, "Minor_Accidents": 18896, "Non_Injury_Accidents": 1297, "Total_Accidents": 55682, "Persons_Killed": 15384, "Persons_Injured": 23143, "Total_Persons_Involved": 71380, "fatality_rate": 27.63, "fatal_pct_of_accidents": 26.5}, {"Year": 2022, "Fatal_Accidents": 17080, "Grievous_Accidents": 20752, "Minor_Accidents": 24825, "Non_Injury_Accidents": 1448, "Total_Accidents": 64105, "Persons_Killed": 17884, "Persons_Injured": 22732, "Total_Persons_Involved": 85587, "fatality_rate": 27.9, "fatal_pct_of_accidents": 26.6}, {"Year": 2023, "Fatal_Accidents": 17526, "Grievous_Accidents": 23686, "Minor_Accidents": 24555, "Non_Injury_Accidents": 1446, "Total_Accidents": 67213, "Persons_Killed": 18347, "Persons_Injured": 26371, "Total_Persons_Involved": 90639, "fatality_rate": 27.3, "fatal_pct_of_accidents": 26.1}, {"Year": 2024, "Fatal_Accidents": 17640, "Grievous_Accidents": 24985, "Minor_Accidents": 23675, "Non_Injury_Accidents": 1226, "Total_Accidents": 67526, "Persons_Killed": 18449, "Persons_Injured": 27245, "Total_Persons_Involved": 89942, "fatality_rate": 27.32, "fatal_pct_of_accidents": 26.1}, {"Year": 2025, "Fatal_Accidents": 17551, "Grievous_Accidents": 21481, "Minor_Accidents": 30941, "Non_Injury_Accidents": 943, "Total_Accidents": 70916, "Persons_Killed": 18274, "Persons_Injured": 22946, "Total_Persons_Involved": 94463, "fatality_rate": 25.77, "fatal_pct_of_accidents": 24.7}];
+
+let selectedYear = "2023";
+let selectedMetric = "accidents";
+
+const YEARS = ["2021","2022","2023"];
+const METRICS = [
+  {key:"accidents", label:"Accidents"},
+  {key:"deaths", label:"Deaths"},
+];
+
+function colorForRate(v, max){
+  const ratio = v / max;
+  if(ratio < 0.4) return getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
+  if(ratio < 0.7) return getComputedStyle(document.documentElement).getPropertyValue('--amber').trim();
+  return getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+}
+
+function renderKpis(){
+  const latest = TREND[TREND.length-1];
+  const y2023 = TREND.find(t=>t.Year===2023);
+  const totalDistrictAccidents2023 = DISTRICTS.reduce((a,d)=>a+(d.accidents_2023||0),0);
+  const totalDistrictDeaths2023 = DISTRICTS.reduce((a,d)=>a+(d.deaths_2023||0),0);
+  const worst = [...DISTRICTS].sort((a,b)=>(b.fatality_rate_2023||0)-(a.fatality_rate_2023||0))[0];
+  const kpis = [
+    {lbl:"TN Accidents (2023)", val: totalDistrictAccidents2023.toLocaleString(), sub:"across 38 districts"},
+    {lbl:"TN Deaths (2023)", val: totalDistrictDeaths2023.toLocaleString(), sub:"lives lost"},
+    {lbl:"Statewide Fatality Rate", val: y2023.fatality_rate + "%", sub:"deaths per 100 accidents"},
+    {lbl:"Highest Fatality Rate", val: worst.district, sub: worst.fatality_rate_2023 + "% (2023)"},
+  ];
+  const wrap = document.getElementById('kpis');
+  wrap.innerHTML = "";
+  kpis.forEach(k=>{
+    const el = document.createElement('div');
+    el.className='kpi';
+    el.innerHTML = `<div class="lbl">${k.lbl}</div><div class="num">${k.val}</div><div class="sub">${k.sub}</div>`;
+    wrap.appendChild(el);
+  });
+}
+
+function renderYearTabs(){
+  const wrap = document.getElementById('yeartabs');
+  wrap.innerHTML = "";
+  YEARS.forEach(y=>{
+    const btn = document.createElement('div');
+    btn.className = 'yeartab' + (y===selectedYear?' active':'');
+    btn.textContent = y;
+    btn.onclick = ()=>{ selectedYear = y; renderBoard(); renderYearTabs(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderMetricToggle(){
+  const wrap = document.getElementById('metrictoggle');
+  wrap.innerHTML = "";
+  METRICS.forEach(m=>{
+    const btn = document.createElement('div');
+    btn.className = 'mtbtn' + (m.key===selectedMetric?' active':'');
+    btn.textContent = m.label;
+    btn.onclick = ()=>{ selectedMetric = m.key; renderBoard(); renderMetricToggle(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderBoard(){
+  const key = selectedMetric + "_" + selectedYear;
+  const rows = [...DISTRICTS].filter(d=>d[key]!==null && d[key]!==undefined && !isNaN(d[key]))
+    .sort((a,b)=>b[key]-a[key]);
+  const max = rows[0][key];
+  const board = document.getElementById('board');
+  board.innerHTML = "";
+  rows.forEach((d,i)=>{
+    const val = d[key];
+    const color = colorForRate(val, max);
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <div class="rank">${i+1}</div>
+      <div class="rowname">${d.district}</div>
+      <div class="rownum">${val.toLocaleString()}</div>
+      <div class="rowrate">${d['fatality_rate_'+selectedYear] ? d['fatality_rate_'+selectedYear]+'% FR' : ''}</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${(val/max*100).toFixed(1)}%; background:${color}"></div></div>
+    `;
+    board.appendChild(row);
+  });
+}
+
+let trendChart, severityChart;
+
+function renderTrendChart(){
+  const ctx = document.getElementById('trendChart');
+  const labels = TREND.map(t=>t.Year);
+  if(trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx, {
+    data:{
+      labels,
+      datasets:[
+        {type:'bar', label:'Total Accidents', data: TREND.map(t=>t.Total_Accidents), backgroundColor:'rgba(245,166,35,0.55)', yAxisID:'y'},
+        {type:'line', label:'Persons Killed', data: TREND.map(t=>t.Persons_Killed), borderColor:'#E8543E', backgroundColor:'#E8543E', yAxisID:'y1', tension:0.3, pointRadius:0}
+      ]
+    },
+    options:{
+      responsive:true,
+      interaction:{mode:'index', intersect:false},
+      plugins:{legend:{labels:{color:'#8A909C', font:{size:10}}}},
+      scales:{
+        x:{ticks:{color:'#8A909C', font:{family:'JetBrains Mono', size:8}, maxRotation:90}, grid:{display:false}},
+        y:{position:'left', ticks:{color:'#8A909C', font:{size:9}}, grid:{color:'#2A2F38'}},
+        y1:{position:'right', ticks:{color:'#8A909C', font:{size:9}}, grid:{display:false}}
+      }
+    }
+  });
+}
+
+function renderSeverityChart(){
+  const ctx = document.getElementById('severityChart');
+  const labels = TREND.map(t=>t.Year);
+  if(severityChart) severityChart.destroy();
+  severityChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Fatal', data: TREND.map(t=>t.Fatal_Accidents), backgroundColor:'#E8543E'},
+        {label:'Grievous', data: TREND.map(t=>t.Grievous_Accidents), backgroundColor:'#F5A623'},
+        {label:'Minor', data: TREND.map(t=>t.Minor_Accidents), backgroundColor:'#8A909C'},
+        {label:'Non-injury', data: TREND.map(t=>t.Non_Injury_Accidents), backgroundColor:'#2ECC71'},
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{labels:{color:'#8A909C', font:{size:9}}}},
+      scales:{
+        x:{stacked:true, ticks:{color:'#8A909C', font:{family:'JetBrains Mono', size:7}, maxRotation:90}, grid:{display:false}},
+        y:{stacked:true, ticks:{color:'#8A909C', font:{size:9}}, grid:{color:'#2A2F38'}}
+      }
+    }
+  });
+}
+
+function renderRiskTierPieChart(){
+  const ctx = document.getElementById('riskTierPieChart');
+  const withRate = DISTRICTS.filter(d=>d.fatality_rate_2023 != null);
+  const low = withRate.filter(d=>d.fatality_rate_2023 < 20).length;
+  const medium = withRate.filter(d=>d.fatality_rate_2023 >= 20 && d.fatality_rate_2023 < 30).length;
+  const high = withRate.filter(d=>d.fatality_rate_2023 >= 30).length;
+  new Chart(ctx, {
+    type:'pie',
+    data:{
+      labels:[`Low (<20%) — ${low} districts`, `Medium (20-30%) — ${medium} districts`, `High (30%+) — ${high} districts`],
+      datasets:[{
+        data:[low, medium, high],
+        backgroundColor:['#2ECC71','#F5A623','#E8543E'],
+        borderColor:'#171A1F',
+        borderWidth:2,
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'bottom', labels:{color:'#8A909C', font:{size:10}, padding:12, boxWidth:12}},
+        tooltip:{callbacks:{label:(c)=>{
+          const names = withRate.filter(d=>{
+            if(c.dataIndex===0) return d.fatality_rate_2023 < 20;
+            if(c.dataIndex===1) return d.fatality_rate_2023 >= 20 && d.fatality_rate_2023 < 30;
+            return d.fatality_rate_2023 >= 30;
+          }).map(d=>d.district).join(', ');
+          return [`${c.raw} districts`, names];
+        }}}
+      }
+    }
+  });
+}
+
+renderKpis();
+renderYearTabs();
+renderMetricToggle();
+renderBoard();
+function colorForFatalityRate(v){
+  if(v < 20) return getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
+  if(v < 25) return getComputedStyle(document.documentElement).getPropertyValue('--amber').trim();
+  return getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+}
+
+function renderYearTable(){
+  const tbody = document.getElementById('yearTableBody');
+  tbody.innerHTML = "";
+  // Show most recent year first
+  [...TREND].sort((a,b)=>b.Year-a.Year).forEach(t=>{
+    const isProvisional = t.Year >= 2024;
+    const color = colorForFatalityRate(t.fatality_rate);
+    const tr = document.createElement('tr');
+    if(isProvisional) tr.className = 'provisional';
+    tr.innerHTML = `
+      <td>${t.Year}</td>
+      <td>${t.Total_Accidents.toLocaleString()}</td>
+      <td>${t.Persons_Killed.toLocaleString()}</td>
+      <td>${t.Persons_Injured.toLocaleString()}</td>
+      <td><span class="fr-cell" style="background:${color}22; color:${color};">${t.fatality_rate}%</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderSeverityPieChart(){
+  const ctx = document.getElementById('severityPieChart');
+  const latest = [...TREND].sort((a,b)=>b.Year-a.Year)[0];
+  const data = [latest.Fatal_Accidents, latest.Grievous_Accidents, latest.Minor_Accidents, latest.Non_Injury_Accidents];
+  new Chart(ctx, {
+    type:'pie',
+    data:{
+      labels:['Fatal','Grievous','Minor','Non-injury'],
+      datasets:[{
+        data,
+        backgroundColor:['#E8543E','#F5A623','#8A909C','#2ECC71'],
+        borderColor:'#171A1F',
+        borderWidth:2,
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'bottom', labels:{color:'#8A909C', font:{size:10.5}, padding:12}},
+        tooltip:{callbacks:{label:(c)=>{
+          const total = data.reduce((a,b)=>a+b,0);
+          const pct = (c.raw/total*100).toFixed(1);
+          return `${c.label}: ${c.raw.toLocaleString()} (${pct}%)`;
+        }}}
+      }
+    }
+  });
+}
+
+function renderDistrictPieChart(){
+  const ctx = document.getElementById('districtPieChart');
+  const sorted = [...DISTRICTS].filter(d=>d.accidents_2023).sort((a,b)=>b.accidents_2023-a.accidents_2023);
+  const top8 = sorted.slice(0,8);
+  const rest = sorted.slice(8);
+  const restTotal = rest.reduce((a,d)=>a+d.accidents_2023,0);
+  const labels = [...top8.map(d=>d.district), 'Other 30 districts'];
+  const data = [...top8.map(d=>d.accidents_2023), restTotal];
+  const palette = ['#E8543E','#F5A623','#2ECC71','#8FD3C7','#C77DFF','#FFD166','#4CC9F0','#F4A261','#5A5F6B'];
+  new Chart(ctx, {
+    type:'pie',
+    data:{
+      labels,
+      datasets:[{ data, backgroundColor: palette, borderColor:'#171A1F', borderWidth:2 }]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'bottom', labels:{color:'#8A909C', font:{size:9.5}, padding:8, boxWidth:10}},
+        tooltip:{callbacks:{label:(c)=>{
+          const total = data.reduce((a,b)=>a+b,0);
+          const pct = (c.raw/total*100).toFixed(1);
+          return `${c.label}: ${c.raw.toLocaleString()} (${pct}%)`;
+        }}}
+      }
+    }
+  });
+}
+
+renderTrendChart();
+renderSeverityChart();
+renderRiskTierPieChart();
+renderYearTable();
+renderSeverityPieChart();
+renderDistrictPieChart();
+</script>
+</body>
+</html>
