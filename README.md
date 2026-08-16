@@ -3,7 +3,7 @@
 An interactive dashboard analyzing road accidents and fatalities across
 Tamil Nadu, built on **real government data** — district-wise accidents
 (2021–2023) and a 32-year statewide trend (1993–2025). Built with plain
-HTML, python (Chart.js) — no frameworks, no build step.
+HTML, python, sql (Chart.js) — no frameworks, no build step.
 
 🔗 https://nandhar0701.github.io/TN-ROAD-SAFTEY-DASHBOARD/
 
